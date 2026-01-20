@@ -1,0 +1,5 @@
+##Como instalar os requirements para rodar o streamlit
+#Entrar para a página do frontend
+cd frontend
+#Instalar dependências
+pip install streamlit requests plotly pandas matplotlib

@@ -1,0 +1,5 @@
+##Instalar dependências do backend
+#Entrar na pasta adequada
+cd backend
+#Instalar todos os módulos necessários
+pip install django djangorestframework django-cors-headers
