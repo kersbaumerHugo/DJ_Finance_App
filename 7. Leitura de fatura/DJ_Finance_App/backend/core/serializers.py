@@ -4,4 +4,4 @@ from .models import Lancamento
 class LancamentoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Lancamento
-        fields = "_all_"
+        fields = "__all__"

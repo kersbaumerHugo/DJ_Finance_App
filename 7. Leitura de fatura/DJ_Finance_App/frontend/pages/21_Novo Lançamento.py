@@ -20,7 +20,7 @@ if submitted:
         "data": data.isoformat(),
         "descricao": descricao,
         "categoria": categoria,
-        "tipo": tipo,
+        "status": tipo,
         "valor": valor
     }
 
