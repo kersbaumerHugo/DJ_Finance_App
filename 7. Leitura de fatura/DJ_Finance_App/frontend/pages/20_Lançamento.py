@@ -3,11 +3,7 @@ import requests
 import pandas as pd
 import plotly.express as px
 
-st.set_page_config(
-    page_title="Lançamentos",
-    page_icon="📝",
-    layout="wide"
-)
+st.set_page_config(page_title="Lançamentos", page_icon="📝", layout="wide")
 
 st.title("📝 Lançamentos")
 st.write("Escolha um tipo de lançamento para realizar:")
