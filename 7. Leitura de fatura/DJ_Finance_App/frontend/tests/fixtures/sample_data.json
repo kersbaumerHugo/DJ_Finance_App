@@ -1,0 +1,20 @@
+{
+  "lancamentos": [
+    {
+      "id": 1,
+      "descricao": "Salário Mensal",
+      "data": "2024-01-05",
+      "categoria": "Renda",
+      "status": "Receita",
+      "valor": 5000.00
+    },
+    {
+      "id": 2,
+      "descricao": "Conta de Luz",
+      "data": "2024-01-10",
+      "categoria": "Utilidades",
+      "status": "Despesa",
+      "valor": 250.00
+    }
+  ]
+}
