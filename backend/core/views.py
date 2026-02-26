@@ -19,6 +19,7 @@ def converter_para_json(obj):
     elif isinstance(obj, Decimal):
         return float(obj)
     return obj
+
 @csrf_exempt
 @api_view(['POST'])
 @parser_classes([MultiPartParser, FormParser])
@@ -95,7 +96,7 @@ def upload_fatura(request):
         return Response({'error': f'Erro ao processar fatura: {str(e)}'}, status=500)
 
 
-@csrf_exempt  # ✅ ADICIONAR esta linha também
+@csrf_exempt
 @api_view(['POST'])
 def importar_fatura(request):
     """
@@ -103,20 +104,28 @@ def importar_fatura(request):
     """
     try:
         transacoes = request.data.get('transacoes', [])
+        banco = request.data.get('banco', 'NUBANK')
         
         if not transacoes:
             return Response({'error': 'Nenhuma transação fornecida'}, status=400)
         
         # Importar
-        resultado = FaturaProcessor.import_transacoes(transacoes)
+        resultado = FaturaProcessor.import_transacoes(transacoes, banco)
+        
+        mensagem = f"✅ {resultado['importadas']} importadas"
+        if resultado['deletadas_csv'] > 0:
+            mensagem += f" | 🗑️ {resultado['deletadas_csv']} CSVs antigos removidos"
+        if resultado['duplicadas'] > 0:
+            mensagem += f" | ⚠️ {resultado['duplicadas']} duplicadas"
         
         return Response({
             'success': True,
+            'mensagem': mensagem,
             **resultado
         })
         
     except Exception as e:
-        print(f"❌ Erro na importação: {type(e).__name__}: {str(e)}")
+        print(f"❌ Erro: {type(e).__name__}: {str(e)}")
         import traceback
         traceback.print_exc()
         return Response({'error': str(e)}, status=500)
@@ -207,6 +216,29 @@ def meses(request):
       }
       return Response(data)
    
-   return Response(status=400)  
+   return Response(status=400)
+
+@csrf_exempt
+@api_view(['GET'])
+def verificar_recorrencias(request):
+    """
+    Endpoint para verificar e gerar lançamentos recorrentes
+    """
+    try:
+        from core.signals import verificar_lancamentos_recorrentes_startup
+        
+        # Executar verificação
+        verificar_lancamentos_recorrentes_startup(sender=None)
+        
+        return Response({
+            'success': True,
+            'mensagem': 'Verificação concluída'
+        })
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=500)
 
 ##

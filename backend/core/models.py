@@ -81,6 +81,29 @@ class Lancamento(models.Model):
         ('PDF', 'PDF'),
         ('CSV', 'CSV'),
     ])
+    STATUS_PAGAMENTO_CHOICES = [
+        ('PAGO', 'Pago'),
+        ('PREVISIONADO', 'Previsionado'),
+        ('PENDENTE', 'Pendente'),
+    ]
+    
+    status_pagamento = models.CharField(
+        max_length=20,
+        choices=STATUS_PAGAMENTO_CHOICES,
+        default='PAGO',
+        help_text='Status do pagamento'
+    )
+    
+    is_recorrente = models.BooleanField(
+        default=False,
+        help_text='Se este lançamento foi criado por uma recorrência'
+    )
+    
+    recorrencia_origem_id = models.IntegerField(
+        null=True, 
+        blank=True,
+        help_text='ID da recorrência que gerou este lançamento'
+    )
     
     class Meta:
         verbose_name = 'Lançamento'
@@ -94,7 +117,54 @@ class Lancamento(models.Model):
     def __str__(self):
         tipo_symbol = "💵" if self.tipo == 'ENTRADA' else "💸"
         return f"{tipo_symbol} {self.descricao} - R$ {self.valor}"
-
+    
+class Recorrencia(models.Model):
+    """
+    Model para gerenciar lançamentos recorrentes (salários, assinaturas, etc)
+    """
+    TIPO_CHOICES = [
+        ('ENTRADA', 'Entrada'),
+        ('SAIDA', 'Saída'),
+    ]
+    
+    descricao = models.CharField(max_length=200, help_text='Ex: Salário Hugo, YouTube Premium')
+    tipo = models.CharField(max_length=10, choices=TIPO_CHOICES)
+    categoria = models.CharField(max_length=50)
+    valor_padrao = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2,
+        help_text='Valor padrão (pode ser ajustado manualmente após criação)'
+    )
+    dia_vencimento = models.IntegerField(
+        help_text='Dia do mês (1-31). Use 5 para "5º dia útil"'
+    )
+    metodo_pagamento = models.CharField(max_length=50)
+    ativo = models.BooleanField(default=True)
+    
+    # Flag especial para dia útil
+    usa_dia_util = models.BooleanField(
+        default=False,
+        help_text='Se True, considera dia_vencimento como "Xº dia útil"'
+    )
+    
+    # Matching para baixa automática
+    palavras_chave_matching = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text='Palavras para identificar na fatura (separadas por vírgula). Ex: "youtube,premium"'
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'recorrencias'
+        verbose_name = 'Recorrência'
+        verbose_name_plural = 'Recorrências'
+        ordering = ['dia_vencimento', 'descricao']
+    
+    def __str__(self):
+        return f"{self.descricao} - R$ {self.valor_padrao} (Dia {self.dia_vencimento})"
    
 class Faturas (models.Model):
    banco = models.CharField(max_length = 50)

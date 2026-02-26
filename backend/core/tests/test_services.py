@@ -5,6 +5,8 @@ from core.services import AnalyticsService
 from datetime import date
 from decimal import Decimal
 
+from core.parsers.fatura_parser import FaturaProcessor
+from core.models import Lancamento
 class TestAnalyticsService(TestCase):
     """Testes para o serviço de analytics"""
     

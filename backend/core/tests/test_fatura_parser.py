@@ -4,7 +4,7 @@ Testes para o sistema de processamento de faturas
 from django.test import TestCase
 from django.core.files.uploadedfile import SimpleUploadedFile
 from core.parsers.nubank_parser import NubankParser
-from core.services.fatura_processor import FaturaProcessor
+from core.parsers.fatura_parser import FaturaProcessor
 from core.models import Lancamento
 import os
 import tempfile

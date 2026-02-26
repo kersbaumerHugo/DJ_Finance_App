@@ -38,66 +38,54 @@ class NubankParser(BaseParser):
     
     def _extract_from_csv(self) -> pd.DataFrame:
         """
-        Extrai dados do CSV exportado do Nubank
-        
-        Formato CSV Nubank:
-        date,category,title,amount
-        2024-01-15,food,Compra Mercado XYZ,150.50
+        Extrai dados do CSV do Nubank
+        Formato: date,title,amount
         """
         try:
-            # Tentar diferentes encodings
-            for encoding in ['utf-8', 'latin-1', 'iso-8859-1']:
-                try:
-                    df = pd.read_csv(self.file_path, encoding=encoding)
-                    break
-                except UnicodeDecodeError:
-                    continue
+            # Ler CSV
+            df = pd.read_csv(self.file_path, encoding='utf-8')
             
-            # Identificar colunas (Nubank pode ter nomes em inglês ou português)
-            column_mapping = {}
+            print(f"📊 Colunas: {df.columns.tolist()}")
+            print(f"📊 Total linhas: {len(df)}")
             
-            for col in df.columns:
-                col_lower = col.lower()
-                if 'date' in col_lower or 'data' in col_lower:
-                    column_mapping[col] = 'data'
-                elif 'title' in col_lower or 'descri' in col_lower or 'estabelecimento' in col_lower:
-                    column_mapping[col] = 'descricao'
-                elif 'amount' in col_lower or 'valor' in col_lower:
-                    column_mapping[col] = 'valor'
-                elif 'category' in col_lower or 'categoria' in col_lower:
-                    column_mapping[col] = 'categoria_nubank'
+            # Renomear colunas
+            df = df.rename(columns={
+                'date': 'data',
+                'title': 'descricao',
+                'amount': 'valor'
+            })
             
-            df = df.rename(columns=column_mapping)
+            # Processar data
+            df['data'] = pd.to_datetime(df['data']).dt.strftime('%Y-%m-%d')
             
-            # Mapear categorias Nubank → Nossas categorias
-            if 'categoria_nubank' in df.columns:
-                categoria_map = {
-                    'food': 'Alimentação',
-                    'transport': 'Transporte',
-                    'health': 'Saúde',
-                    'home': 'Moradia',
-                    'entertainment': 'Lazer',
-                    'education': 'Educação',
-                    'services': 'Serviços',
-                    'shopping': 'Compras',
-                    # Português
-                    'alimentação': 'Alimentação',
-                    'transporte': 'Transporte',
-                    'saúde': 'Saúde',
-                    'casa': 'Moradia',
-                    'lazer': 'Lazer',
-                    'educação': 'Educação',
-                }
-                df['categoria'] = df['categoria_nubank'].map(categoria_map).fillna('Outros')
-                df = df.drop('categoria_nubank', axis=1)
-            
-            # Garantir valores positivos
+            # Processar valor (já vem como número, apenas garantir absoluto)
             df['valor'] = df['valor'].abs()
             
-            return df[['data', 'descricao', 'categoria', 'valor']]
+            # Filtrar "Pagamento recebido"
+            df = df[~df['descricao'].str.contains('Pagamento recebido', case=False, na=False)]
+            
+            # Extrair mês/ano de referência
+            primeira_data = pd.to_datetime(df['data'].iloc[0])
+            mes_referencia = primeira_data.month
+            ano_referencia = primeira_data.year
+            
+            # Adicionar metadados
+            df['mes_referencia'] = mes_referencia
+            df['ano_referencia'] = ano_referencia
+            df['origem'] = 'CSV'
+            
+            # Categorizar
+            df['categoria'] = df['descricao'].apply(self.categorizar_automatico)
+            
+            print(f"✅ {len(df)} transações extraídas do CSV")
+            
+            return df[['data', 'descricao', 'categoria', 'valor', 'mes_referencia', 'ano_referencia', 'origem']]
             
         except Exception as e:
-            raise ValueError(f"Erro ao processar CSV Nubank: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            raise ValueError(f"Erro ao processar CSV: {str(e)}")
+        
     
     def _extract_from_pdf(self) -> pd.DataFrame:
         """
@@ -183,7 +171,7 @@ class NubankParser(BaseParser):
                 raise ValueError("Nenhuma transação encontrada")
             
             df = pd.DataFrame(transacoes)
-            df = df.drop_duplicates(subset=['data', 'descricao', 'valor'])
+            #df = df.drop_duplicates(subset=['data', 'descricao', 'valor'])
             df['categoria'] = df['descricao'].apply(self.categorizar_automatico)
             
             return df[['data', 'descricao', 'categoria', 'valor', 'mes_referencia', 'ano_referencia', 'origem']]

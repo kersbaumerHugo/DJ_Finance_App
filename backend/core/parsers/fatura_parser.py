@@ -85,50 +85,75 @@ class FaturaProcessor:
         }
     
     @staticmethod
-    def import_transacoes(transacoes: List[Dict[str, Any]]) -> Dict[str, int]:
+    def import_transacoes(transacoes: List[Dict[str, Any]], banco: str = 'NUBANK') -> Dict[str, int]:
         """
-        Importa transações para o banco de dados
+        Importa transações com proteção
         """
+        from core.models import Lancamento
+        from decimal import Decimal
+        
         importadas = 0
         duplicadas = 0
         erros = 0
+        deletadas = 0
+        
+        tem_csv = any(t.get('origem') == 'CSV' for t in transacoes)
+        
+        if tem_csv:
+            print(f"🗑️ Deletando CSVs antigos do banco {banco}...")
+            deleted_count = Lancamento.objects.filter(
+                origem='CSV',
+                metodo_pagamento__icontains=banco
+            ).delete()[0]
+            deletadas = deleted_count
+            print(f"✅ {deleted_count} transações CSV antigas removidas")
         
         for transacao in transacoes:
             try:
-                # ✅ Converter data para formato correto
                 data_str = str(transacao['data'])
-                if ' ' in data_str:  # Remover hora se existir
+                if ' ' in data_str:
                     data_str = data_str.split(' ')[0]
                 
-                # Verificar duplicatas
-                existe = Lancamento.objects.filter(
-                    data=data_str,  # ✅ Usar data formatada
-                    descricao=transacao['descricao'],
-                    valor=Decimal(str(transacao['valor']))
-                ).exists()
+                origem = transacao.get('origem', 'MANUAL')
                 
-                if existe:
-                    duplicadas += 1
-                    continue
+                # ✅ Verificar duplicatas APENAS para PDF/MANUAL
+                if origem not in ['CSV']:
+                    existe = Lancamento.objects.filter(
+                        data=data_str,
+                        descricao=transacao['descricao'],
+                        valor=Decimal(str(transacao['valor'])),
+                        origem__in=['PDF', 'MANUAL']  # Não comparar com CSV
+                    ).exists()
+                    
+                    if existe:
+                        duplicadas += 1
+                        print(f"⚠️ Duplicata detectada: {transacao['descricao']} em {data_str}")
+                        continue
                 
                 # Criar lançamento
                 Lancamento.objects.create(
                     descricao=transacao['descricao'],
-                    data=data_str,  # ✅ Usar data formatada
+                    data=data_str,
                     categoria=transacao['categoria'],
-                    tipo=transacao['tipo'],
-                    metodo_pagamento=transacao['metodo_pagamento'],
-                    valor=Decimal(str(transacao['valor']))
+                    tipo=transacao.get('tipo', 'SAIDA'),
+                    metodo_pagamento=transacao.get('metodo_pagamento', 'CREDITO_NUBANK'),
+                    valor=Decimal(str(transacao['valor'])),
+                    mes_referencia=transacao.get('mes_referencia'),
+                    ano_referencia=transacao.get('ano_referencia'),
+                    origem=origem
                 )
                 
                 importadas += 1
                 
             except Exception as e:
-                print(f"Erro ao importar transação: {e}")
+                print(f"❌ Erro ao importar: {e}")
                 erros += 1
         
         return {
             'importadas': importadas,
             'duplicadas': duplicadas,
-            'erros': erros
+            'erros': erros,
+            'deletadas_csv': deletadas
         }
+        
+

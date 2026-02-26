@@ -41,7 +41,18 @@ def _handle_request_error(error: Exception, operation: str) -> None:
     else:
         raise APIException(f"Erro inesperado ao {operation}: {str(error)}")
 
-
+# ========== VERIFICAÇÃO DE RECORRÊNCIAS ==========
+def verificar_recorrencias() -> dict[str, Any]:
+    """
+    Verifica e gera lançamentos recorrentes
+    """
+    try:
+        url = f"{API_BASE_URL}/verificar-recorrencias/"
+        response = requests.get(url, timeout=REQUEST_TIMEOUT)
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException as e:
+        _handle_request_error(e, "verificar recorrências")
 # ========== RESUMO ==========
 
 
